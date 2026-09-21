@@ -1,0 +1,18 @@
+# 웹 프레임워크 (uvicorn, fastapi CLI 포함)
+fastapi[standard]
+
+# 설정 (.env 읽기)
+pydantic-settings
+
+# DB
+sqlalchemy
+
+# 엑셀 파싱
+openpyxl
+
+# 파일 업로드 (UploadFile 사용 시 필요)
+python-multipart
+
+# 테스트
+pytest
+httpx
