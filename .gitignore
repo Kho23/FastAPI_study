@@ -1,0 +1,17 @@
+# 개인 금융 데이터 — 절대 커밋하지 않는다
+data/*
+!data/.gitkeep
+*.db
+*.xlsx
+*.xls
+
+# 환경 설정 (실제 값)
+.env
+
+# 파이썬 생성물
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# IDE
+.idea/

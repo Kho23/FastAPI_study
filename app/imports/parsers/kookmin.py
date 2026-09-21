@@ -72,7 +72,7 @@ def open_excel(file)->list[CardTransaction]:
         4. 완전히 빈 행은 건너뛴다.
 
     Args:
-        file_path: 읽을 xlsx 파일 경로.
+        file: 읽을 xlsx 파일.
 
     Returns:
         거래 한 건당 CardTransaction 하나씩 담긴 리스트.
