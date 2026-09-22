@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.transactions import repository
 from app.transactions.schemas import TransactionOut, TransactionPage
+from app.core.exceptions import NotFoundError
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -35,5 +36,5 @@ def list_transactions(
 def get_transaction(transaction_id: int, db: Annotated[Session, Depends(get_db)]):
     transaction = repository.get_by_id(db, transaction_id)
     if transaction is None:
-        raise HTTPException(status_code=404, detail="조회된 거래내역이 없습니다.")
+        raise NotFoundError(detail="조회된 거래내역이 없습니다.")
     return transaction

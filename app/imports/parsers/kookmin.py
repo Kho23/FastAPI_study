@@ -11,6 +11,11 @@ KB국민카드 홈페이지에서 내려받은 '카드이용내역' xlsx 파일�
 이 모듈은 DB나 FastAPI를 전혀 알지 못한다. 파일 경로를 받아
 파이썬 객체 목록을 돌려주는 순수 변환 계층이다.
 """
+from typing import IO
+from zipfile import BadZipfile
+
+from app.core.exceptions import InvalidStatementError
+from app.imports.parsers.base import ParsedTransaction
 
 from openpyxl import load_workbook
 from dataclasses import dataclass
@@ -77,18 +82,20 @@ def open_excel(file)->list[CardTransaction]:
     Returns:
         거래 한 건당 CardTransaction 하나씩 담긴 리스트.
     """
-    if not file:
-        raise ValueError(".")
-    ws = load_workbook(file).active
-    rows = list(ws.iter_rows(values_only=True))
-    header_idx = 6 # 헤더 인덱스
-    headers = [str(c).replace("\n", " ").strip() for c in rows[header_idx]]
-    card_transaction = []
-    for row in rows[header_idx+1:]:
-        if all(c is None for c in row):
-            continue
-        record = dict(zip(headers, row))
-        card_transaction.append(to_dataclass(record))
+    try:
+        ws = load_workbook(file).active
+        rows = list(ws.iter_rows(values_only=True))
+        header_idx = 6 # 헤더 인덱스
+        headers = [str(c).replace("\n", " ").strip() for c in rows[header_idx]]
+        card_transaction = []
+        for row in rows[header_idx+1:]:
+            if all(c is None for c in row):
+                continue
+            record = dict(zip(headers, row))
+            card_transaction.append(to_dataclass(record))
+    except (BadZipfile, OSError, KeyError, IndexError, ValueError, TypeError) as e:
+        raise InvalidStatementError("KB국민카드 이용내역 형식이 아닙니다.") from e
+
     return card_transaction
 
 def parse_date(value) -> date | None:
@@ -134,7 +141,7 @@ def to_dataclass(record: dict) -> CardTransaction:
     """엑셀 한 행(딕셔너리)을 CardTransaction으로 바꾼다.
 
     이 함수가 엑셀 컬럼명과 CardTransaction 필드를 잇는 유일한 지점이다.
-    카드사가 컬럼명을 바꾸면 여기만 고치면 된다. q
+    카드사가 컬럼명을 바꾸면 여기만 고치면 된다.
 
     변환 규칙:
         - 날짜·시간은 parse_date, parse_time으로 타입을 맞춘다.
@@ -165,4 +172,23 @@ def to_dataclass(record: dict) -> CardTransaction:
         status=record["상태"],
         billing_date=parse_date(record.get("결제예정일")),
         approval_no=str(record["승인번호"]),
+    )
+
+class KookminParser:
+    source = 'kookmin'
+
+    def parse(self, file: IO[bytes]) -> list[ParsedTransaction]:
+        return [to_parsed(t) for t in open_excel(file)]
+
+def to_parsed(t: CardTransaction) -> ParsedTransaction:
+    return ParsedTransaction(
+        transacted_at=t.transacted_at,
+        transacted_time=t.transacted_time,
+        merchant=t.merchant,
+        amount=t.amount,
+        discount=t.discount,
+        payment_type=t.payment_type,
+        status=t.status,
+        card_name=t.card_name,
+        approval_no=t.approval_no,
     )

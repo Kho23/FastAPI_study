@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
 
-from app.imports.parsers.kookmin import CardTransaction
+from app.imports.parsers.kookmin import ParsedTransaction
 from app.transactions import repository
 from app.transactions.models import Transaction
 
-def to_model(source: str, t: CardTransaction) -> Transaction:
+def to_model(source: str, t: ParsedTransaction) -> Transaction:
     """등록한 엑셀을 파싱하여 DB 모델(Transaction)로 변환한다"""
     return Transaction(
         source = source,
@@ -19,7 +19,7 @@ def to_model(source: str, t: CardTransaction) -> Transaction:
         approval_no = t.approval_no
     )
 
-def save_transactions(db: Session, source: str, parsed: list[CardTransaction]) -> tuple[int, int]:
+def save_transactions(db: Session, source: str, parsed: list[ParsedTransaction]) -> tuple[int, int]:
     """새 거래만 저장하고, 저장 건 수와 중복 건 수를 반환"""
     seen = repository.find_existing_keys(db, source)
     new_transactions = []

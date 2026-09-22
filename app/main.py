@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.core.database import Base, engine
+from app.core.exceptions import register_exception_handlers
 from app.imports.router import router as import_router
 from app.transactions import models
 from app.transactions.router import router as transaction_router
@@ -16,3 +17,5 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(import_router)
 app.include_router(transaction_router)
+
+register_exception_handlers(app)

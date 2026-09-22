@@ -24,9 +24,10 @@
 - [x] ① DB 저장 — config → database → `Transaction` 모델 → `imports/service.py`. `(source, approval_no, transacted_at)` 유니크 제약 + 코드에서 선(先) 중복 제거.
 - [x] ② 거래 조회 — `GET /transactions`(기간·가맹점·source 필터, page/size), `GET /transactions/{id}`.
 - [x] ③ 업로드 전환 — `POST /imports/excel`이 `UploadFile`을 받는다. 잘못된 파일은 400.
-- [ ] ④ 테스트 — `tests/conftest.py`(임시 DB로 `get_db` 교체 + 코드로 만든 가짜 KB 엑셀)와 `tests/test_imports.py` 6개 케이스를 안내함. 사용자가 입력 중.
-- [ ] ⑤ 현대카드 파서 + `parsers/base.py` 공통 인터페이스. 이때 파서 전용 예외(`InvalidStatementError` 등)를 만들고 `core/exceptions.py`에서 exception handler로 일괄 처리(라우터의 `except (BadZipFile, OSError, KeyError, IndexError, ValueError)` 나열을 대체). 현대카드 실제 엑셀 샘플이 아직 없다.
-- [ ] ⑥ 카테고리 자동 분류 (가맹점명 키워드 규칙) — `app/categories/`
+- [x] ④ 테스트 — `tests/conftest.py`(임시 DB로 `get_db` 교체 + 코드로 만든 가짜 KB 엑셀), `tests/test_imports.py` 6개 통과.
+- [x] ⑤-a 공통 파서 인터페이스(`parsers/base.py`) + 앱 예외(`core/exceptions.py`, `register_exception_handlers`) + `POST /imports/{source}`. 테스트 9개 통과.
+- [ ] ⑤-b 현대카드 파서(`parsers/hyundai.py`, `HyundaiParser`) — 실제 엑셀 샘플이 아직 없어 보류. 파일이 생기면 `PARSERS`에 한 줄 추가.
+- [ ] ⑥ 카테고리 자동 분류 — `app/categories/{models,classifier,repository,service,schemas,router}.py`, `Transaction.category_id` FK + `relationship`, 기본 규칙 seed(lifespan), `POST /categories/reclassify`, `PATCH /transactions/{id}`(수동 지정), `GET /transactions?category_id=`. 2026-09-22에 코드 안내함(복사본에서 17개 테스트 통과, 실제 KB 파일 236건 중 183건 자동 분류). **스키마 변경이라 `data/ledger.db` 삭제 후 재업로드 필요.**
 - [ ] ⑦ 월별·카테고리별 리포트 — `app/reports/`
 
 ## 알아 둘 것
