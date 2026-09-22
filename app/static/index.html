@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>가계부</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --line: #e3e6ea; --text: #1f2328; --muted: #6b7280;
+    --accent: #2563eb; --accent-soft: #e8efff; --danger: #b91c1c; --ok: #15803d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, "Malgun Gothic", sans-serif; color: var(--text); background: var(--bg); }
+  header { display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0; }
+  header .status { color: var(--muted); font-size: 12px; margin-left: auto; }
+  nav { display: flex; gap: 4px; padding: 0 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  nav button { border: 0; background: none; padding: 10px 14px; cursor: pointer; font: inherit; color: var(--muted); border-bottom: 2px solid transparent; }
+  nav button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  section[hidden] { display: none; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  input, select, button.btn { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+  input[type=date] { min-width: 150px; }
+  button.btn { cursor: pointer; }
+  button.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.btn:disabled { opacity: .5; cursor: default; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.cancelled td { color: var(--muted); }
+  tr.cancelled td.num { text-decoration: line-through; }
+  td select { padding: 3px 6px; font-size: 13px; }
+  .pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 10px; color: var(--muted); }
+  .msg { padding: 10px 12px; border-radius: 6px; margin-top: 10px; font-size: 13px; }
+  .msg.ok { background: #ecfdf5; color: var(--ok); }
+  .msg.err { background: #fef2f2; color: var(--danger); }
+  .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat { background: var(--accent-soft); border-radius: 6px; padding: 8px 14px; }
+  .stat b { display: block; font-size: 18px; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .cat { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .cat:last-child { border-bottom: 0; }
+  .cat .name { font-weight: 600; min-width: 90px; }
+  .chip { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+  .cat form { display: flex; gap: 6px; margin-left: auto; }
+  .cat form input { width: 140px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>가계부</h1>
+  <span class="status" id="status">서버 확인 중…</span>
+</header>
+<nav>
+  <button data-tab="transactions" class="active">거래</button>
+  <button data-tab="upload">업로드</button>
+  <button data-tab="categories">카테고리</button>
+</nav>
+
+<main>
+  <!-- 거래 -->
+  <section id="tab-transactions">
+    <div class="panel">
+      <form id="filter" class="row">
+        <label>시작일 <input type="date" name="start_date"></label>
+        <label>종료일 <input type="date" name="end_date"></label>
+        <label>가맹점 <input name="merchant" placeholder="검색어"></label>
+        <label>카테고리 <select name="category_id" id="filter-category"><option value="">전체</option></select></label>
+        <label>페이지당 <select name="size"><option>20</option><option>50</option><option>100</option></select></label>
+        <button class="btn primary" type="submit">조회</button>
+        <button class="btn" type="button" id="filter-reset">초기화</button>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="stats" id="stats"></div>
+      <table>
+        <thead><tr><th>날짜</th><th>시간</th><th>가맹점</th><th style="text-align:right">금액</th><th>상태</th><th>카테고리</th></tr></thead>
+        <tbody id="tx-body"></tbody>
+      </table>
+      <div class="pager">
+        <button class="btn" id="prev">이전</button>
+        <span id="page-info"></span>
+        <button class="btn" id="next">다음</button>
+      </div>
+      <p class="hint">금액 합계는 현재 페이지 기준이며 취소 건(승인취소·취소전표매입)은 제외합니다.</p>
+    </div>
+  </section>
+
+  <!-- 업로드 -->
+  <section id="tab-upload" hidden>
+    <div class="panel">
+      <form id="upload" class="row">
+        <label>카드사 <select name="source"><option value="kookmin">KB국민카드</option><option value="hyundai">현대카드</option></select></label>
+        <label>이용내역 파일 (.xlsx) <input type="file" name="file" accept=".xlsx" required></label>
+        <button class="btn primary" type="submit">업로드</button>
+      </form>
+      <div id="upload-msg"></div>
+      <p class="hint">같은 파일을 다시 올려도 이미 저장된 거래(승인번호 기준)는 건너뜁니다.</p>
+    </div>
+  </section>
+
+  <!-- 카테고리 -->
+  <section id="tab-categories" hidden>
+    <div class="panel">
+      <form id="new-category" class="row">
+        <label>새 카테고리 <input name="name" placeholder="예: 통신비" required></label>
+        <button class="btn primary" type="submit">추가</button>
+        <button class="btn" type="button" id="reclassify">미분류 거래 재분류</button>
+      </form>
+      <div id="cat-msg"></div>
+    </div>
+    <div class="panel" id="cat-list"></div>
+  </section>
+</main>
+
+<script>
+const API = location.protocol.startsWith("http") ? "" : "http://127.0.0.1:8000";
+const $ = (sel) => document.querySelector(sel);
+const fmt = new Intl.NumberFormat("ko-KR");
+const CANCELLED = new Set(["승인취소", "취소전표매입"]);
+
+let page = 1;
+let categories = [];
+
+async function api(path, options = {}) {
+  const res = await fetch(API + path, options);
+  const body = res.status === 204 ? null : await res.json().catch(() => null);
+  if (!res.ok) {
+    const detail = body && body.detail;
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail) || `HTTP ${res.status}`);
+  }
+  return body;
+}
+const json = (method, data) => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+function show(el, text, ok) { el.innerHTML = `<div class="msg ${ok ? "ok" : "err"}">${text}</div>`; }
+
+// ---- 탭
+document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll("nav button").forEach((x) => x.classList.toggle("active", x === b));
+  document.querySelectorAll("main section").forEach((s) => (s.hidden = s.id !== "tab-" + b.dataset.tab));
+  if (b.dataset.tab === "categories") loadCategories();
+}));
+
+// ---- 카테고리
+async function loadCategories() {
+  categories = await api("/categories");
+  const opts = categories.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+  $("#filter-category").innerHTML = `<option value="">전체</option>` + opts;
+  $("#cat-list").innerHTML = categories.map((c) => `
+    <div class="cat">
+      <span class="name">${c.name}</span>
+      ${c.rules.map((r) => `<span class="chip">${r.keyword}</span>`).join("") || `<span class="hint">규칙 없음</span>`}
+      <form data-id="${c.id}"><input name="keyword" placeholder="키워드 추가" required><button class="btn" type="submit">+</button></form>
+    </div>`).join("") || `<p class="hint">카테고리가 없습니다.</p>`;
+  $("#cat-list").querySelectorAll("form").forEach((f) => f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      await api(`/categories/${f.dataset.id}/rules`, json("POST", { keyword: f.keyword.value.trim() }));
+      show($("#cat-msg"), `키워드 "${f.keyword.value.trim()}" 추가`, true);
+      loadCategories();
+    } catch (err) { show($("#cat-msg"), err.message, false); }
+  }));
+}
+$("#new-category").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = e.target.name.value.trim();
+  try {
+    await api("/categories", json("POST", { name }));
+    e.target.reset();
+    show($("#cat-msg"), `카테고리 "${name}" 추가`, true);
+    loadCategories();
+  } catch (err) { show($("#cat-msg"), err.message, false); }
+});
+$("#reclassify").addEventListener("click", async () => {
+  try {
+    const r = await api("/categories/reclassify", { method: "POST" });
+    show($("#cat-msg"), `${r.updated}건이 새로 분류되었습니다.`, true);
+  } catch (err) { show($("#cat-msg"), err.message, false); }
+});
+
+// ---- 거래
+async function loadTransactions() {
+  const form = $("#filter");
+  const params = new URLSearchParams({ page });
+  for (const [k, v] of new FormData(form)) if (v) params.set(k, v);
+  const data = await api("/transactions?" + params);
+  const size = Number(form.size.value);
+  const pages = Math.max(1, Math.ceil(data.total / size));
+
+  const spent = data.items.filter((t) => !CANCELLED.has(t.status)).reduce((s, t) => s + t.amount, 0);
+  $("#stats").innerHTML = `
+    <div class="stat"><b>${fmt.format(data.total)}건</b><span>조회 결과</span></div>
+    <div class="stat"><b>${fmt.format(spent)}원</b><span>이 페이지 지출 (취소 제외)</span></div>`;
+
+  const catOptions = (sel) => `<option value="">미분류</option>` +
+    categories.map((c) => `<option value="${c.id}" ${sel === c.id ? "selected" : ""}>${c.name}</option>`).join("");
+  $("#tx-body").innerHTML = data.items.map((t) => `
+    <tr class="${CANCELLED.has(t.status) ? "cancelled" : ""}">
+      <td>${t.transacted_at}</td>
+      <td>${(t.transacted_time || "").slice(0, 5)}</td>
+      <td>${t.merchant}</td>
+      <td class="num">${fmt.format(t.amount)}</td>
+      <td>${t.status}</td>
+      <td><select data-id="${t.id}">${catOptions(t.category && t.category.id)}</select></td>
+    </tr>`).join("") || `<tr><td colspan="6" class="hint">거래가 없습니다.</td></tr>`;
+  $("#tx-body").querySelectorAll("select").forEach((s) => s.addEventListener("change", async () => {
+    try {
+      await api(`/transactions/${s.dataset.id}`, json("PATCH", { category_id: s.value ? Number(s.value) : null }));
+    } catch (err) { alert(err.message); }
+  }));
+
+  $("#page-info").textContent = `${page} / ${pages}`;
+  $("#prev").disabled = page <= 1;
+  $("#next").disabled = page >= pages;
+}
+$("#filter").addEventListener("submit", (e) => { e.preventDefault(); page = 1; loadTransactions(); });
+$("#filter-reset").addEventListener("click", () => { $("#filter").reset(); page = 1; loadTransactions(); });
+$("#prev").addEventListener("click", () => { page--; loadTransactions(); });
+$("#next").addEventListener("click", () => { page++; loadTransactions(); });
+
+// ---- 업로드
+$("#upload").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const body = new FormData();
+  body.append("file", form.file.files[0]);
+  form.querySelector("button").disabled = true;
+  try {
+    const r = await api(`/imports/${form.source.value}`, { method: "POST", body });
+    show($("#upload-msg"), `파싱 ${r.count}건 · 저장 ${r.saved}건 · 중복 건너뜀 ${r.skipped}건`, true);
+    form.reset();
+  } catch (err) { show($("#upload-msg"), err.message, false); }
+  finally { form.querySelector("button").disabled = false; }
+});
+
+// ---- 시작
+(async () => {
+  try {
+    await loadCategories();
+    await loadTransactions();
+    $("#status").textContent = "서버 연결됨 · " + (API || location.origin);
+  } catch (err) {
+    $("#status").textContent = "서버에 연결할 수 없습니다: " + err.message;
+  }
+})();
+</script>
+</body>
+</html>
