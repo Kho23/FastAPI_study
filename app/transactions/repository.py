@@ -11,6 +11,9 @@ def find_existing_keys(db: Session, source: str) -> set[tuple[str, date]]:
     stmt = select(Transaction.approval_no, Transaction.transacted_at).where(
         Transaction.source == source
     )
+    """
+    == select approval_no, transacted_at from Transaction where Transaction.source == 매개변수 source
+    """
     return {(approval_no, transacted_at) for approval_no, transacted_at in db.execute(stmt)}
 
 def add_all(db:Session, transactions: list[Transaction]) -> None:
