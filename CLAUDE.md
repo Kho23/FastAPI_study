@@ -30,6 +30,11 @@
 - [ ] ⑥ 카테고리 자동 분류 — `app/categories/{models,classifier,repository,service,schemas,router}.py`, `Transaction.category_id` FK + `relationship`, 기본 규칙 seed(lifespan), `POST /categories/reclassify`, `PATCH /transactions/{id}`(수동 지정), `GET /transactions?category_id=`. 2026-09-22에 코드 안내함(복사본에서 17개 테스트 통과, 실제 KB 파일 236건 중 183건 자동 분류). **스키마 변경이라 `data/ledger.db` 삭제 후 재업로드 필요.**
 - [ ] ⑦ 월별·카테고리별 리포트 — `app/reports/`
 
+## UI
+
+- `app/static/index.html`: 프레임워크·빌드 없는 단일 HTML UI(거래 조회/카테고리 변경, 업로드, 카테고리·규칙 관리, 재분류). `main.py`에서 `app.mount("/ui", StaticFiles(...))`로 서빙 → `http://127.0.0.1:8000/ui/`. 프런트는 학습 대상이 아니라서 Claude가 작성했다(2026-09-22). API가 바뀌면 이 파일의 `fetch` 경로도 맞춘다.
+- `desktop/`: Electron 껍데기(`main.js`가 `/ui/`를 창으로 띄움). `cd desktop && npm install && npm start`. FastAPI 서버가 먼저 떠 있어야 한다. `node_modules/`는 커밋하지 않는다.
+
 ## 알아 둘 것
 
 - KB 엑셀 구조: 1~6행 요약, 7행 헤더(셀 안에 줄바꿈 있음), 8행부터 데이터, 중간에 빈 행 있음. 승인번호는 중복되지 않는다.

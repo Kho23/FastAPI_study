@@ -8,6 +8,9 @@ from app.imports.router import router as import_router
 from app.transactions import models
 from app.transactions.router import router as transaction_router
 
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine) # 서버 시작 시 1회 실행
@@ -19,3 +22,5 @@ app.include_router(import_router)
 app.include_router(transaction_router)
 
 register_exception_handlers(app)
+
+app.mount("/ui", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="ui")

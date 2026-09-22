@@ -4,7 +4,7 @@ def normalize(text: str) -> str:
     """비교를 위해 공백 제거 및 소문자화"""
     return text.replace(" ", "").lower()
 
-def classify(merchant: str, rules: list[CategoryRule]) -> Category:
+def classify(merchant: str, rules: list[CategoryRule]) -> Category | None:
     """가맹정명의 키워드로 카테고리를 찾는다.
 
     긴 키워드부터 검사하며, "쿠팡이츠" "쿠팡" 규칙이 있을 때
@@ -16,4 +16,3 @@ def classify(merchant: str, rules: list[CategoryRule]) -> Category:
         if normalize(rule.keyword) in target:
             return rule.category
     return None
-
