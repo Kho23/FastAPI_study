@@ -87,7 +87,7 @@
         <span id="page-info"></span>
         <button class="btn" id="next">다음</button>
       </div>
-      <p class="hint">금액 합계는 현재 페이지 기준이며 취소 건(승인취소·취소전표매입)은 제외합니다.</p>
+      <p class="hint">전체 지출은 현재 필터(기간·가맹점·카테고리)에 걸린 모든 거래 기준입니다. 국민카드 취소 건(승인취소·취소전표매입)은 제외하고, 현대카드 취소(음수 금액)는 원결제와 상계합니다.</p>
     </div>
   </section>
 
@@ -184,18 +184,52 @@ $("#reclassify").addEventListener("click", async () => {
 });
 
 // ---- 거래
+// 지출 합계 규칙
+// - KB: 취소 건이 양수 금액 + 취소 상태로 온다 → 합계에서 뺀다.
+// - 현대: 원결제는 그대로 두고 취소가 음수 행으로 따로 온다 → 더하면 상계된다.
+const countsAsSpending = (t) => !(CANCELLED.has(t.status) && t.amount > 0);
+const sumSpending = (items) => items.filter(countsAsSpending).reduce((s, t) => s + t.amount, 0);
+
+// 필터 전체 기간 합계. 목록 API가 한 번에 100건까지만 주므로 모든 페이지를 받아 더한다.
+// 페이지만 넘길 때는 다시 받지 않도록 필터 문자열 기준으로 캐시한다.
+let totalCache = { key: null, value: null };
+async function loadFilteredTotal(filterParams, total) {
+  const key = filterParams.toString();
+  if (totalCache.key === key) return totalCache.value;
+  const SIZE = 100;
+  const pageCount = Math.ceil(total / SIZE);
+  const pages = await Promise.all(Array.from({ length: pageCount }, (_, i) => {
+    const p = new URLSearchParams(filterParams);
+    p.set("page", i + 1);
+    p.set("size", SIZE);
+    return api("/transactions?" + p);
+  }));
+  const value = sumSpending(pages.flatMap((d) => d.items));
+  totalCache = { key, value };
+  return value;
+}
+
 async function loadTransactions() {
   const form = $("#filter");
-  const params = new URLSearchParams({ page });
-  for (const [k, v] of new FormData(form)) if (v) params.set(k, v);
+  const filterParams = new URLSearchParams();
+  for (const [k, v] of new FormData(form)) if (v && k !== "size") filterParams.set(k, v);
+  const params = new URLSearchParams(filterParams);
+  params.set("page", page);
+  params.set("size", form.size.value);
   const data = await api("/transactions?" + params);
   const size = Number(form.size.value);
   const pages = Math.max(1, Math.ceil(data.total / size));
 
-  const spent = data.items.filter((t) => !CANCELLED.has(t.status)).reduce((s, t) => s + t.amount, 0);
-  $("#stats").innerHTML = `
-    <div class="stat"><b>${fmt.format(data.total)}건</b><span>조회 결과</span></div>
-    <div class="stat"><b>${fmt.format(spent)}원</b><span>이 페이지 지출 (취소 제외)</span></div>`;
+  const renderStats = (allSpent) => {
+    $("#stats").innerHTML = `
+      <div class="stat"><b>${fmt.format(data.total)}건</b><span>조회 결과</span></div>
+      <div class="stat"><b>${allSpent === null ? "계산 중…" : fmt.format(allSpent) + "원"}</b><span>조회 결과 전체 지출 (취소 반영)</span></div>
+      <div class="stat"><b>${fmt.format(sumSpending(data.items))}원</b><span>이 페이지 지출</span></div>`;
+  };
+  renderStats(null);
+  loadFilteredTotal(filterParams, data.total)
+    .then(renderStats)
+    .catch((err) => { $("#stats").insertAdjacentHTML("beforeend", `<div class="msg err">합계 계산 실패: ${err.message}</div>`); });
 
   const catOptions = (sel) => `<option value="">미분류</option>` +
     categories.map((c) => `<option value="${c.id}" ${sel === c.id ? "selected" : ""}>${c.name}</option>`).join("");
@@ -233,6 +267,7 @@ $("#upload").addEventListener("submit", async (e) => {
   try {
     const r = await api(`/imports/${form.source.value}`, { method: "POST", body });
     show($("#upload-msg"), `파싱 ${r.count}건 · 저장 ${r.saved}건 · 중복 건너뜀 ${r.skipped}건`, true);
+    totalCache = { key: null, value: null };
     form.reset();
   } catch (err) { show($("#upload-msg"), err.message, false); }
   finally { form.querySelector("button").disabled = false; }

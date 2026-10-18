@@ -25,6 +25,8 @@ app.whenReady().then(async () => {
   if (!(await waitForServer())) {
     dialog.showErrorBox("서버 없음", "FastAPI 서버(127.0.0.1:8000)가 켜져 있지 않습니다.\n프로젝트 루트에서 `fastapi dev app/main.py`를 먼저 실행하세요.");
   }
+  // index.html을 고쳐도 예전 화면이 캐시에서 나오지 않도록 띄울 때마다 비운다.
+  await win.webContents.session.clearCache();
   win.loadURL(UI_URL);
 });
 
