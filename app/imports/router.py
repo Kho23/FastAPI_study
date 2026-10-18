@@ -7,11 +7,12 @@ from app.core.database import get_db
 from app.core.exceptions import InvalidStatementError
 from app.imports import service
 from app.imports.parsers.kookmin import KookminParser
+from app.imports.parsers.hyundai import HyundaiParser
 from app.imports.schemas import CardTransactionOut, ImportResult
 
 router = APIRouter(prefix="/imports", tags=["imports"])
 
-PARSERS = {"kookmin": KookminParser()}
+PARSERS = {"kookmin": KookminParser(), "hyundai": HyundaiParser()}
 
 @router.post("/{source}", response_model=ImportResult)
 def import_statement(source: str, file: UploadFile, db: Annotated[Session, Depends(get_db)]):

@@ -44,7 +44,7 @@ def test_upload_without_file_returns_422(client):
     assert res.status_code == 422
 
 def test_unknown_source_returns_400(client, kookmin_xlsx):
-    res = client.post("/imports/hyundai", files={"file": ("a.xlsx", kookmin_xlsx)})
+    res = client.post("/imports/samsung", files={"file": ("a.xlsx", kookmin_xlsx)})
     assert res.status_code == 400
     assert "카드사는 지원하지 않습니다." in res.json()["detail"]
 
