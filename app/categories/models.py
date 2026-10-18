@@ -19,5 +19,5 @@ class CategoryRule(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     keyword: Mapped[str] = mapped_column(String(50), unique=True)
-    category_id: Mapped[int] = mapped_column(ForeignKey("categories_id"))
+    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
     category: Mapped[Category] = relationship(back_populates="rules")

@@ -1,7 +1,7 @@
 from datetime import date
 
 from sqlalchemy import select, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.transactions.models import Transaction
 
@@ -27,6 +27,7 @@ def search(
     end_date: date | None = None,
     merchant: str | None = None,
     source: str | None = None,
+    category_id: int | None = None,
     offset: int = 0,
     limit: int = 20,
 ) -> tuple[list[Transaction], int]:
@@ -41,7 +42,10 @@ def search(
         stmt = stmt.where(Transaction.merchant.contains(merchant))
     if source:
         stmt = stmt.where(Transaction.source == source)
+    if category_id is not None:
+        stmt = stmt.where(Transaction.category_id == category_id)
     # scalar 는 각 행의 첫번째 값만 가져옴 cur.fetchone() 과 같음
+
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
 
     stmt = stmt.order_by(
@@ -49,8 +53,14 @@ def search(
         Transaction.transacted_time.desc(),
         Transaction.id.desc()
     )
+    stmt = stmt.options(selectinload(Transaction.category))
     items = db.scalars(stmt.offset(offset).limit(limit)).all()
     return items, total
 
 def get_by_id(db: Session, transaction_id: int) -> Transaction | None:
     return db.get(Transaction, transaction_id)
+
+def find_uncategorized(db: Session) -> list[Transaction]:
+    """카테고리 없는 거래목록 분류"""
+    stmt = select(Transaction).where(Transaction.category_id.is_(None))
+    return db.scalars(stmt).all()

@@ -1,8 +1,9 @@
 from datetime import date, datetime, time
 
-from sqlalchemy import String, UniqueConstraint, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import ForeignKey, String, UniqueConstraint, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.categories.models import Category
 from app.core.database import Base
 
 
@@ -29,3 +30,5 @@ class Transaction(Base):
     card_name: Mapped[str | None]
     approval_no : Mapped[str]
     created_at : Mapped[datetime] = mapped_column(server_default=func.now()) # 값이 없으면 현재 시간
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"))
+    category: Mapped["Category | None"] =  relationship()

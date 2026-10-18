@@ -18,7 +18,7 @@ def find_rule_by_keyword(db: Session, keyword: str) -> CategoryRule | None:
 
 def list_rules(db: Session) -> list[CategoryRule]:
     stmt = select(CategoryRule).options(selectinload(CategoryRule.category))
-    return db.scalar(stmt).all()
+    return db.scalars(stmt).all()
 
 def add_category(db: Session, name: str) -> Category:
     category = Category(name=name)

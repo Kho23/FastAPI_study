@@ -2,6 +2,12 @@ from datetime import date, time
 
 from pydantic import BaseModel, ConfigDict
 
+
+class CategoryBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+
 class TransactionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -16,9 +22,13 @@ class TransactionOut(BaseModel):
     status : str
     card_name : str | None
     approval_no : str
+    category: CategoryBrief | None
 
 class TransactionPage(BaseModel):
     total : int
     page : int
     size : int
     items : list[TransactionOut]
+
+class TransactionCategoryUpdate(BaseModel):
+    category_id: int | None

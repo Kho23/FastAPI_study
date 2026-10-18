@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.imports.parsers.kookmin import ParsedTransaction
 from app.transactions import repository
 from app.transactions.models import Transaction
+from app.categories import service as category_service
 
 def to_model(source: str, t: ParsedTransaction) -> Transaction:
     """등록한 엑셀을 파싱하여 DB 모델(Transaction)로 변환한다"""
@@ -29,5 +30,6 @@ def save_transactions(db: Session, source: str, parsed: list[ParsedTransaction])
             continue
         seen.add(key)
         new_transactions.append(to_model(source, t))
+    category_service.classify_transactions(db, new_transactions)
     repository.add_all(db, new_transactions)
     return len(new_transactions), len(parsed)-len(new_transactions)
