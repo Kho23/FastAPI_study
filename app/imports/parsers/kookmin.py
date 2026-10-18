@@ -1,7 +1,7 @@
 """KB국민카드 이용내역 엑셀 파서.
 
 KB국민카드 홈페이지에서 내려받은 '카드이용내역' xlsx 파일을 읽어
-거래 한 건당 하나의 CardTransaction 객체로 변환한다.
+거래 한 건당 하나의 KookminTransaction 객체로 변환한다.
 
 파일 구조 (2026-09 기준):
     - 1~6행: 조회기간, 카드번호, 정상/취소 건수·금액 요약. 파싱하지 않는다.
@@ -25,7 +25,7 @@ DATE_FORMAT = "%Y-%m-%d"
 TIME_FORMAT = "%H:%M"
 
 @dataclass
-class CardTransaction:
+class KookminTransaction:
     """카드 거래 한 건.
 
     엑셀의 한 행이 이 객체 하나에 대응한다. 필드 이름은 엑셀 컬럼명이
@@ -65,7 +65,7 @@ class CardTransaction:
     billing_date: date | None
     approval_no: str
 
-def open_excel(file)->list[CardTransaction]:
+def open_excel(file)->list[KookminTransaction]:
     """엑셀 파일을 읽어 거래 목록으로 변환한다.
 
     처리 순서:
@@ -80,10 +80,15 @@ def open_excel(file)->list[CardTransaction]:
         file: 읽을 xlsx 파일.
 
     Returns:
-        거래 한 건당 CardTransaction 하나씩 담긴 리스트.
+        거래 한 건당 KookminTransaction 하나씩 담긴 리스트.
     """
     try:
-        ws = load_workbook(file).active
+        wb = load_workbook(file)
+        if not wb:
+            raise InvalidStatementError(
+                "시트를 읽을 수 없습니다. 엑셀을 'Excel 통합 문서(.xlsx)' 형식으로 저장 후 다시 시도하세요."
+            )
+        ws = wb.active
         rows = list(ws.iter_rows(values_only=True))
         header_idx = 6 # 헤더 인덱스
         headers = [str(c).replace("\n", " ").strip() for c in rows[header_idx]]
@@ -137,10 +142,10 @@ def parse_time(value) -> time | None:
     return datetime.strptime(str(value).strip(), TIME_FORMAT).time()
 
 
-def to_dataclass(record: dict) -> CardTransaction:
+def to_dataclass(record: dict) -> KookminTransaction:
     """엑셀 한 행(딕셔너리)을 CardTransaction으로 바꾼다.
 
-    이 함수가 엑셀 컬럼명과 CardTransaction 필드를 잇는 유일한 지점이다.
+    이 함수가 엑셀 컬럼명과 KookminTransaction 필드를 잇는 유일한 지점이다.
     카드사가 컬럼명을 바꾸면 여기만 고치면 된다.
 
     변환 규칙:
@@ -155,9 +160,9 @@ def to_dataclass(record: dict) -> CardTransaction:
             줄바꿈과 공백을 정리한 헤더명이다.
 
     Returns:
-        타입 변환이 끝난 CardTransaction.
+        타입 변환이 끝난 KookminTransaction.
     """
-    return CardTransaction(
+    return KookminTransaction(
         transacted_at=parse_date(record["이용일"]),
         transacted_time=parse_time(record["이용 시간"]),
         customer_name=record["이용 고객명"],
@@ -180,7 +185,7 @@ class KookminParser:
     def parse(self, file: IO[bytes]) -> list[ParsedTransaction]:
         return [to_parsed(t) for t in open_excel(file)]
 
-def to_parsed(t: CardTransaction) -> ParsedTransaction:
+def to_parsed(t: KookminTransaction) -> ParsedTransaction:
     return ParsedTransaction(
         transacted_at=t.transacted_at,
         transacted_time=t.transacted_time,
